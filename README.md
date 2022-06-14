@@ -12,3 +12,13 @@ The Risk API is a python flask service using [Supabase](supabase.com) for record
 
 [Documentation is hosted on readthedocs](https://docs.signata.net/en/latest/risk.html).
 
+## Development
+
+Set the supabase URL and Key (server key, not client key) for your development environment. For Windows PowerShell:
+
+$Env:SUPABASE_URL = "..."
+$Env:SUPABASE_KEY = "..."
+
+VSCode can run the application in debug mode using it's built-in flask debugger.
+
+To call the API, just use an app like Postman to hit http://localhost:5000

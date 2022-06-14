@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
+from functools import wraps
 import os
 from flask import Flask
-from flask import request
+from flask import request, abort
 from eth_utils import is_address
 from supabase import create_client, Client
 import supabase
@@ -13,15 +14,80 @@ supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
 
+
+def get_api_key(key):
+    """
+    Searches for a given API Key from the db
+    @param key: API Key to search the db for
+    @return: Record if found, None if not found
+    """
+    api_key_records = supabase.table("api_keys").select("*").eq('api_key', key).execute()
+    if len(api_key_records.data) == 0:
+        return None
+    else:
+        return api_key_records.data[0]
+
+
+def validate_api_key(key, type):
+    """
+    Validates a given API Key
+    @param key: API Key from Request
+    @return: boolean
+    """
+    if key is None:
+        return False
+    api_key = get_api_key(key)
+    if api_key is None:
+        return False
+    elif api_key["api_key"] == key and api_key["type"] == type:
+        return True
+    return False
+
+
+def require_write_key(f):
+    """
+    @param f: Flask function
+    @return: decorator
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if validate_api_key(request.headers.get('X-Api-Key'), 'write'):
+            return f(*args, **kwargs)
+        else:
+            abort(401)
+        return decorated
+
+
+def require_read_key(f):
+    """
+    @param f: Flask function
+    @return: decorator
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if validate_api_key(request.headers.get('X-Api-Key'), 'read'):
+            return f(*args, **kwargs)
+        else:
+            abort(401)
+        return decorated
+
+
 @app.route("/")
 def get_version():
     return "0.0.1"
 
+
 def update_risk_level(addr):
     return False
 
+
 @app.route("/api/v1/riskLevel/<addr>", methods=['GET'])
+@require_read_key
 def get_risk_level(addr):
+    """
+    @param addr: Address to check risk level of
+    @return: string of risk level
+    """
     # simple address validation
     if not is_address(addr):
         return 'Invalid Address', 400
@@ -54,7 +120,13 @@ def get_risk_level(addr):
 
 
 @app.route("/api/v1/riskEvents", methods=['POST'])
+@require_write_key
 def add_risk_event():
+    """
+    Injects a risk event from the JSON request body.
+    Requires a 'write' X-Api-Key
+    @return: 200 OK
+    """
     data = request.json
 
     if not is_address(data.address):
