@@ -55,7 +55,8 @@ def require_write_key(f):
             return f(*args, **kwargs)
         else:
             abort(401)
-        return decorated
+
+    return decorated
 
 
 def require_read_key(f):
@@ -69,7 +70,8 @@ def require_read_key(f):
             return f(*args, **kwargs)
         else:
             abort(401)
-        return decorated
+
+    return decorated
 
 
 @app.route("/")
